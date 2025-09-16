@@ -25,6 +25,7 @@
     .help{color:#666;font-weight:400}
   </style>
 </head>
+
 <body>
   <div class="container">
     <header>
@@ -90,7 +91,6 @@
         </label>
 
         <div class="actions">
-          <button type="button" id="btnShowFlex">ดูแพ็กเกจแนะนำ</button>
           <button type="submit" id="btnSubmit">ส่งข้อมูล</button>
         </div>
       </form>
@@ -102,45 +102,121 @@
     </footer>
   </div>
 
+  <!-- ====== CONFIG (ใช้ค่าจริงของคุณแล้ว) ====== -->
   <script>
     const LIFF_ID = "2008116315-BqxZjXZZ";
     const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbxHXig6PS2fCpNy7ksju61W8n85GtLP0Km-gGYpdf61QMVe8JTYt1veDSIIQowNeA39/exec";
   </script>
+
+  <!-- ====== SCRIPT หลัก (มี CORS fix) ====== -->
   <script>
-    var FLEX_COMPARISON = {"type":"carousel","contents":[bubble("คุ้มค่า","6,900",false),bubble("ยอดนิยม","8,900",true),bubble("จัดเต็ม","12,900",false)]};
-    function bubble(title, price, highlight){
-      var color=highlight?"#1E66FF":"#EEEEEE";var textColor=highlight?"#1E66FF":"#333333";
-      return {"type":"bubble","size":"kilo","body":{"type":"box","layout":"vertical","spacing":"md","contents":[
-        {"type":"text","text":title,"weight":"bold","size":"lg","color":textColor},
-        {"type":"text","text":"แผนที่เหมาะกับ {coverage}","size":"sm","color":"#666"},
-        {"type":"separator","margin":"md","color":color},
-        {"type":"box","layout":"vertical","spacing":"xs","contents":[
-          {"type":"text","text":"เริ่มต้น "+price+" บ./ปี","weight":"bold","size":"md"},
-          {"type":"text","text":"ซ่อมห้าง/อู่ • รถชน • น้ำท่วม • ไฟไหม้","size":"xs","wrap":true}
-        ]}]},"footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[
-          {"type":"button","style":"primary","action":{"type":"postback","label":"สนใจแพ็กนี้","data":"action=interest&plan="+encodeURIComponent(title)+"&coverage={coverage}&budget={budget}"},"height":"sm"},
-          {"type":"button","style":"secondary","action":{"type":"uri","label":"ดูรายละเอียด","uri":"https://line.me/"},"height":"sm"}
-        ]},"styles":{"footer":{"separator":true}}};
-    }
-    var userProfile=null;
-    document.addEventListener("DOMContentLoaded",function(){
-      init();
-      document.getElementById("leadForm").addEventListener("submit",submitLead);
-      document.getElementById("btnShowFlex").addEventListener("click",previewFlex);
+    var userProfile = null;
+
+    document.addEventListener("DOMContentLoaded", function () {
+      // Init LIFF & load profile
+      liff.init({ liffId: LIFF_ID })
+        .then(function () {
+          if (!liff.isLoggedIn()) { liff.login(); return; }
+          if (liff.isInClient()) {
+            return liff.getProfile();
+          } else {
+            var decoded = liff.getDecodedIDToken();
+            return {
+              userId: decoded ? decoded.sub : "external-browser",
+              displayName: decoded ? decoded.name : "Guest",
+              pictureUrl: decoded ? decoded.picture : ""
+            };
+          }
+        })
+        .then(function (profile) {
+          if (!profile) return;
+          userProfile = profile;
+          renderProfile(profile);
+        })
+        .catch(function (err) {
+          showStatus("เกิดข้อผิดพลาดในการโหลด LIFF: " + err.message, true);
+        });
+
+      document.getElementById("leadForm").addEventListener("submit", submitLead);
     });
-    function init(){liff.init({liffId:LIFF_ID}).then(function(){
-      if(!liff.isLoggedIn()){liff.login();return;} 
-      if(liff.isInClient()){liff.getProfile().then(function(p){userProfile=p;renderProfile(p);}).catch(showErr);}
-      else{var d=liff.getDecodedIDToken();userProfile={userId:d?d.sub:"external-browser",displayName:d?d.name:"Guest",pictureUrl:d?d.picture:""};renderProfile(userProfile);} 
-    }).catch(function(err){showStatus("เกิดข้อผิดพลาด: "+err.message,true);});}
-    function renderProfile(p){document.getElementById("displayName").textContent=p.displayName||"-";document.getElementById("userId").textContent=p.userId||"-";document.getElementById("userPicture").src=p.pictureUrl?p.pictureUrl:"https://placehold.co/80x80";document.getElementById("profile").classList.remove("hidden");}
-    function val(id){return(document.getElementById(id).value||"").trim();}
-    function collectForm(){return{createdAt:new Date().toISOString(),displayName:(userProfile&&userProfile.displayName)||"",userId:(userProfile&&userProfile.userId)||"",fullName:val("fullName"),phone:val("phone"),licensePlate:val("licensePlate"),province:val("province"),brand:val("brand"),modelYear:val("modelYear"),coverage:val("coverage"),budget:val("budget"),deduct:val("deduct"),note:val("note"),source:"liff"};}
-    function validateForm(){var req=["fullName","phone","licensePlate","province","coverage"];for(var i=0;i<req.length;i++){var el=document.getElementById(req[i]);if(!el.value||String(el.value).trim()===""){el.focus();showStatus("กรอกข้อมูลให้ครบ: "+req[i],true);return false;}}return true;}
-    function submitLead(e){e.preventDefault();if(!validateForm())return;showStatus("กำลังส่งข้อมูล...");var payload=collectForm();fetch(GAS_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}).then(function(r){return r.json();}).then(function(d){if(d&&d.ok){showStatus("ส่งข้อมูลสำเร็จ ✅");}else{showStatus("ส่งไม่สำเร็จ: "+(d&&d.error?d.error:"Unknown"),true);}}).catch(function(err){showStatus("ส่งไม่สำเร็จ: "+err.message,true);});}
-    function previewFlex(){try{var coverage=val("coverage")||"-";var budget=val("budget")||"—";var flex=JSON.parse(JSON.stringify(FLEX_COMPARISON));for(var i=0;i<flex.contents.length;i++){var b=flex.contents[i];var body=(b.body&&b.body.contents)||[];for(var j=0;j<body.length;j++){var node=body[j];if(node.type==="text"&&node.text&&node.text.indexOf("{coverage}")!==-1){node.text=node.text.replace("{coverage}",coverage);}}var footer=(b.footer&&b.footer.contents)||[];for(var k=0;k<footer.length;k++){var btn=footer[k];if(btn.action&&btn.action.data){btn.action.data=btn.action.data.replace("{coverage}",coverage).replace("{budget}",budget);}}}if(liff.isInClient()){liff.shareTargetPicker([{type:"flex",altText:"ตัวเลือกประกันรถ",contents:flex}]);}else{alert("ตัวอย่าง Flex ใช้งานเมื่อเปิดในแอป LINE เท่านั้น\nอย่างไรก็ตาม คุณสามารถส่งฟอร์มได้ตามปกติ");}}catch(e){alert("ไม่สามารถแสดงตัวอย่าง: "+e.message);}}
-    function showStatus(msg,isError){var el=document.getElementById("status");el.textContent=msg||"";el.style.color=isError?"#c0392b":"#2d6cdf";}
-    function showErr(err){showStatus(err&&err.message?err.message:String(err),true);}
+
+    function renderProfile(p) {
+      document.getElementById("displayName").textContent = p.displayName || "-";
+      document.getElementById("userId").textContent = p.userId || "-";
+      document.getElementById("userPicture").src = p.pictureUrl ? p.pictureUrl : "https://placehold.co/80x80";
+      document.getElementById("profile").classList.remove("hidden");
+    }
+
+    function val(id) { return (document.getElementById(id).value || "").trim(); }
+
+    function validateForm() {
+      var required = ["fullName","phone","licensePlate","province","coverage"];
+      for (var i=0;i<required.length;i++){
+        var el = document.getElementById(required[i]);
+        if (!el.value || String(el.value).trim()===""){
+          el.focus();
+          showStatus("กรอกข้อมูลให้ครบถ้วน: " + required[i], true);
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function collectForm() {
+      return {
+        createdAt: new Date().toISOString(),
+        displayName: (userProfile && userProfile.displayName) ? userProfile.displayName : "",
+        userId: (userProfile && userProfile.userId) ? userProfile.userId : "",
+        fullName: val("fullName"),
+        phone: val("phone"),
+        licensePlate: val("licensePlate"),
+        province: val("province"),
+        brand: val("brand"),
+        modelYear: val("modelYear"),
+        coverage: val("coverage"),
+        budget: val("budget"),
+        deduct: val("deduct"),
+        note: val("note"),
+        source: "liff"
+      };
+    }
+
+    function submitLead(evt) {
+      evt.preventDefault();
+      if (!validateForm()) return;
+      showStatus("กำลังส่งข้อมูล...");
+
+      var payload = collectForm();
+
+      // CORS fix: ใช้ text/plain เพื่อตัด preflight (OPTIONS)
+      fetch(GAS_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      })
+      .then(function(resp){
+        // Apps Script บางครั้งตอบเป็น text — แปลงให้เป็น JSON ถ้าเป็นไปได้
+        var ct = (resp.headers.get("content-type") || "").toLowerCase();
+        if (ct.indexOf("application/json") !== -1) return resp.json();
+        return resp.text().then(function(t){ try { return JSON.parse(t); } catch(e){ return { ok:false, error:t || "unknown" }; } });
+      })
+      .then(function(data){
+        if (data && data.ok){
+          showStatus("ส่งข้อมูลสำเร็จ ✅ ทีมงานจะติดต่อกลับโดยเร็วที่สุด");
+        } else {
+          showStatus("ส่งไม่สำเร็จ: " + (data && data.error ? data.error : "Unknown"), true);
+        }
+      })
+      .catch(function(err){
+        showStatus("ส่งไม่สำเร็จ: " + err.message, true);
+      });
+    }
+
+    function showStatus(msg, isError){
+      var el = document.getElementById("status");
+      el.textContent = msg || "";
+      el.style.color = isError ? "#c0392b" : "#2d6cdf";
+    }
   </script>
 </body>
 </html>
