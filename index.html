@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>บริการต่อภาษี & ประกันรถ | LIFF</title>
+  <meta name="description" content="ฟอร์มรับข้อมูลลูกค้าเพื่อเสนอราคา/นัดต่อภาษี เชื่อม Google Apps Script และแชร์ Flex Message ใน LINE">
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Prompt,Arial,sans-serif;background:#f7f8fc;color:#222}
+    .container{max-width:880px;margin:0 auto;padding:16px}
+    header{text-align:center;margin:8px 0 16px}
+    h1{margin:8px 0 6px;font-size:1.6rem} .subtitle{color:#555}
+    .card{background:#fff;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 6px 18px rgba(0,0,0,.06)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    label{display:flex;flex-direction:column;gap:6px;font-weight:600}
+    input,select,textarea{padding:10px 12px;border:1px solid #ddd;border-radius:12px;font:inherit;background:#fff}
+    .actions{display:flex;gap:12px;margin-top:12px;flex-wrap:wrap}
+    button{padding:10px 16px;border:0;border-radius:12px;cursor:pointer;font-weight:700}
+    #btnShowFlex{background:#eef3ff} #btnSubmit{background:#1e66ff;color:#fff}
+    .status{margin-top:10px;min-height:24px}
+    .profile-row{display:flex;gap:12px;align-items:center}
+    .profile-row img{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid #eee}
+    .hidden{display:none} footer{margin:24px 0;text-align:center;color:#777}
+    .help{color:#666;font-weight:400}
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1>บริการต่อภาษี & ประกันรถ</h1>
+      <p class="subtitle">กรอกข้อมูลเพื่อรับใบเสนอราคา / นัดต่อภาษี | ข้อมูลคุณจะถูกเก็บอย่างปลอดภัย</p>
+    </header>
+
+    <section id="profile" class="card hidden">
+      <h2>โปรไฟล์ LINE</h2>
+      <div class="profile-row">
+        <img id="userPicture" alt="profile" />
+        <div>
+          <div><strong>ชื่อ:</strong> <span id="displayName">-</span></div>
+          <div><strong>User ID:</strong> <span id="userId">-</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>ข้อมูลรถยนต์</h2>
+      <form id="leadForm" novalidate>
+        <div class="grid">
+          <label>ชื่อ-สกุล
+            <input id="fullName" type="text" placeholder="ชื่อ-สกุล" required />
+          </label>
+          <label>โทรศัพท์
+            <input id="phone" type="tel" placeholder="08x-xxx-xxxx" required />
+          </label>
+          <label>ทะเบียนรถ
+            <input id="licensePlate" type="text" placeholder="xก-1234" required />
+          </label>
+          <label>จังหวัด
+            <input id="province" type="text" placeholder="ชลบุรี" required />
+          </label>
+          <label>ยี่ห้อ
+            <input id="brand" type="text" placeholder="MG, Toyota, Honda..." />
+          </label>
+          <label>รุ่น/ปี
+            <input id="modelYear" type="text" placeholder="เช่น MG3 / 2018" />
+          </label>
+          <label>ประเภทความคุ้มครอง
+            <select id="coverage" required>
+              <option value="class1">ชั้น 1</option>
+              <option value="2plus">ชั้น 2+</option>
+              <option value="3plus">ชั้น 3+</option>
+              <option value="class3">ชั้น 3</option>
+            </select>
+          </label>
+          <label>งบประมาณ (บาท/ปี)
+            <input id="budget" type="number" min="0" step="1000" placeholder="เช่น 10000" />
+          </label>
+          <label>Deduct (หักค่าเสียหายส่วนแรก)
+            <select id="deduct">
+              <option value="0">0</option>
+              <option value="2000">2,000</option>
+              <option value="5000">5,000</option>
+            </select>
+          </label>
+        </div>
+
+        <label>หมายเหตุเพิ่มเติม <span class="help">(เช่น เน้นซ่อมห้าง/อู่, เพิ่มพรบ./ภาษี)</span>
+          <textarea id="note" rows="3" placeholder="รายละเอียดเพิ่มเติม"></textarea>
+        </label>
+
+        <div class="actions">
+          <button type="button" id="btnShowFlex">ดูแพ็กเกจแนะนำ</button>
+          <button type="submit" id="btnSubmit">ส่งข้อมูล</button>
+        </div>
+      </form>
+      <p id="status" class="status"></p>
+    </section>
+
+    <footer>
+      <small>Powered by LIFF + Google Apps Script</small>
+    </footer>
+  </div>
+
+  <!-- ====== CONFIG (ใช้ค่าจริงของคุณแล้ว) ====== -->
+  <script>
+    const LIFF_ID = "2008116315-BqxZjXZZ";
+    const GAS_ENDPOINT = "https://script.google.com/macros/s/AKfycbx9IUTG6B2yJ2EfcPZfAj5dScArX8j00N1y6XTUvV4RuSzRtxnrntozqEK-n7UbWHKP/exec";
+  </script>
+
+  <!-- ====== SCRIPT หลัก ====== -->
+  <script>
+    var FLEX_COMPARISON = {
+      "type": "carousel",
+      "contents": [
+        bubble("คุ้มค่า",  "6,900",  false),
+        bubble("ยอดนิยม", "8,900",  true),
+        bubble("จัดเต็ม", "12,900", false)
+      ]
+    };
+    function bubble(title, price, highlight) {
+      var color = highlight ? "#1E66FF" : "#EEEEEE";
+      var textColor = highlight ? "#1E66FF" : "#333333";
+      return {
+        "type": "bubble","size":"kilo",
+        "body":{"type":"box","layout":"vertical","spacing":"md",
+          "contents":[
+            {"type":"text","text":title,"weight":"bold","size":"lg","color":textColor},
+            {"type":"text","text":"แผนที่เหมาะกับ {{coverage}}","size":"sm","color":"#666666"},
+            {"type":"separator","margin":"md","color":color},
+            {"type":"box","layout":"vertical","spacing":"xs","contents":[
+              {"type":"text","text":"เริ่มต้น "+price+" บ./ปี","weight":"bold","size":"md"},
+              {"type":"text","text":"ซ่อมห้าง/อู่ • รถชน • น้ำท่วม • ไฟไหม้","size":"xs","wrap":true}
+            ]}
+          ]},
+        "footer":{"type":"box","layout":"vertical","spacing":"sm","contents":[
+          {"type":"button","style":"primary",
+            "action":{"type":"postback","label":"สนใจแพ็กนี้","data":"action=interest&plan="+encodeURIComponent(title)+"&coverage={{coverage}}&budget={{budget}}"},
+            "height":"sm"},
+          {"type":"button","style":"secondary",
+            "action":{"type":"uri","label":"ดูรายละเอียด","uri":"https://line.me/"},"height":"sm"}
+        ]},
+        "styles":{"footer":{"separator":true}}
+      };
+    }
+
+    var userProfile = null;
+    document.addEventListener("DOMContentLoaded", function() {
+      init();
+      document.getElementById("leadForm").addEventListener("submit", submitLead);
+      document.getElementById("btnShowFlex").addEventListener("click", previewFlex);
+    });
+
+    function init() {
+      liff.init({ liffId: LIFF_ID })
+        .then(function() {
+          if (!liff.isLoggedIn()) { liff.login(); return; }
+          if (liff.isInClient()) {
+            liff.getProfile().then(function(profile){
+              userProfile = profile; renderProfile(profile);
+            }).catch(showErr);
+          } else {
+            var decoded = liff.getDecodedIDToken();
+            userProfile = {
+              userId: decoded ? decoded.sub : "external-browser",
+              displayName: decoded ? decoded.name : "Guest",
+              pictureUrl: decoded ? decoded.picture : ""
+            };
+            renderProfile(userProfile);
+          }
+        })
+        .catch(function(err){ showStatus("เกิดข้อผิดพลาดในการโหลด LIFF: "+ err.message); });
+    }
+
+    function renderProfile(p) {
+      var sec = document.getElementById("profile");
+      document.getElementById("displayName").textContent = p.displayName || "-";
+      document.getElementById("userId").textContent = p.userId || "-";
+      var img = document.getElementById("userPicture");
+      img.src = p.pictureUrl ? p.pictureUrl : "https://placehold.co/80x80";
+      sec.classList.remove("hidden");
+    }
+
+    function collectForm() {
+      return {
+        createdAt: new Date().toISOString(),
+        displayName: (userProfile && userProfile.displayName) ? userProfile.displayName : "",
+        userId: (userProfile && userProfile.userId) ? userProfile.userId : "",
+        fullName: val("fullName"), phone: val("phone"),
+        licensePlate: val("licensePlate"), province: val("province"),
+        brand: val("brand"), modelYear: val("modelYear"),
+        coverage: val("coverage"), budget: val("budget"),
+        deduct: val("deduct"), note: val("note"),
+        source: "liff"
+      };
+    }
+    function val(id){ return (document.getElementById(id).value || "").trim(); }
+
+    function validateForm() {
+      var required = ["fullName","phone","licensePlate","province","coverage"];
+      for (var i=0;i<required.length;i++){
+        var el = document.getElementById(required[i]);
+        if (!el.value || String(el.value).trim()===""){
+          el.focus();
+          showStatus("กรอกข้อมูลให้ครบถ้วน: " + required[i], true);
+          return false;
+        }
+      }
+      return true;
+    }
+
+    function submitLead(evt){
+      evt.preventDefault();
+      if (!validateForm()) return;
+      showStatus("กำลังส่งข้อมูล...");
+
+      var payload = collectForm();
+      fetch(GAS_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(function(resp){ return resp.json(); })
+      .then(function(data){
+        if (data && data.ok){
+          showStatus("ส่งข้อมูลสำเร็จ ✅ ทีมงานจะติดต่อกลับโดยเร็วที่สุด");
+        } else {
+          showStatus("ส่งไม่สำเร็จ: " + (data && data.error ? data.error : "Unknown"), true);
+        }
+      })
+      .catch(function(err){ showStatus("ส่งไม่สำเร็จ: "+ err.message, true); });
+    }
+
+    function previewFlex(){
+      try{
+        var coverage = val("coverage") || "-";
+        var budget = val("budget") || "—";
+        var flex = JSON.parse(JSON.stringify(FLEX_COMPARISON));
+        for (var i=0;i<flex.contents.length;i++){
+          var bubble = flex.contents[i];
+          var body = bubble.body && bubble.body.contents ? bubble.body.contents : [];
+          for (var j=0;j<body.length;j++){
+            var node = body[j];
+            if (node.type === "text" && node.text && node.text.indexOf("{{coverage}}") !== -1){
+              node.text = node.text.replace("{{coverage}}", coverage);
+            }
+          }
+          var footer = bubble.footer && bubble.footer.contents ? bubble.footer.contents : [];
+          for (var k=0;k<footer.length;k++){
+            var btn = footer[k];
+            if (btn.action && btn.action.data){
+              btn.action.data = btn.action.data
+                .replace("{{coverage}}", coverage)
+                .replace("{{budget}}", budget);
+            }
+          }
+        }
+        if (liff.isInClient()){
+          liff.shareTargetPicker([{ type:"flex", altText:"ตัวเลือกประกันรถ", contents:flex }]);
+        } else {
+          alert("ตัวอย่าง Flex ใช้งานเมื่อเปิดในแอป LINE เท่านั้น\nอย่างไรก็ตาม คุณสามารถส่งฟอร์มได้ตามปกติ");
+        }
+      } catch(e){ alert("ไม่สามารถแสดงตัวอย่าง: " + e.message); }
+    }
+
+    function showStatus(msg, isError){
+      var el = document.getElementById("status");
+      el.textContent = msg || "";
+      el.style.color = isError ? "#c0392b" : "#2d6cdf";
+    }
+    function showErr(err){ showStatus(err && err.message ? err.message : String(err), true); }
+  </script>
+</body>
+</html>
