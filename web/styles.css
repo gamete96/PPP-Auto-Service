@@ -1,0 +1,23 @@
+/* styles.css */
+:root { --brand:#0ea5e9; --accent:#facc15; }
+* { font-family: "Prompt", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; }
+
+.container { max-width: 840px; margin: 2rem auto; }
+.card { padding: 1rem 1.25rem; border-radius: 18px; box-shadow: 0 8px 28px rgba(0,0,0,.08); background: #fff; }
+
+.brand { display:flex; align-items:center; gap: 12px; padding-bottom: .5rem; border-bottom: 1px solid #eee; margin-bottom: 1rem; }
+.logo { width: 64px; height: 64px; object-fit: contain; border-radius: 12px; }
+.brand-title h1 { margin: 0; font-size: 1.25rem; line-height: 1.1; }
+.brand-title p { margin: .25rem 0 0; color: #666; }
+.carriers { margin-left: auto; display:flex; gap: 8px; align-items:center; }
+.carrier { height: 36px; object-fit: contain; }
+
+#quote-form .grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+#quote-form input, #quote-form select { background: #f9fafb; border-radius: 12px; }
+#quote-form button { background: var(--brand); border-radius: 12px; }
+
+#result { background: #f8fafc; border-radius: 16px; padding: 1rem; border: 1px dashed #cbd5e1; }
+.actions { display:flex; gap: 10px; }
+.actions .button { border-radius: 12px; }
+
+.footnote { text-align:center; margin-top: 1rem; color: #666; }

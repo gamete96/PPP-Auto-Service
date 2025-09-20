@@ -1,0 +1,93 @@
+<?!= '<!DOCTYPE html>' ?>
+<html lang="th">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Insurance Quote</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <style><?!= include('styles'); ?></style>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+</head>
+<body>
+  <main class="container">
+    <section class="card">
+      <header class="brand">
+        <img src="https://i.postimg.cc/Df6nhj6s/Chat-GPT-Image-18-2568-08-53-30.png" class="logo" alt="ร้าน"/>
+        <div class="brand-title">
+          <hgroup>
+            <h1>Indara Insure</h1>
+            <p>คำนวณเบี้ย & ออกใบเสนอราคา</p>
+          </hgroup>
+        </div>
+        <div class="carriers">
+          <img src="https://i.postimg.cc/3JDhG87j/logo-indara-insure.png" class="carrier" alt="INSURE"/>
+          <img src="https://i.postimg.cc/nhbJYycy/png-clipart-axa-ppp-healthcare-health-insurance-business-business-blue-angle-removebg-preview.png" class="carrier" alt="AXA"/>
+          <img src="https://i.postimg.cc/rw1LhfDK/png-clipart-japon-logo-tokio-marine-holdings-assurance-tokio-marine-hcc-sompo-japan-nipponkoa-insura.png" class="carrier" alt="TOKYO"/>
+        </div>
+      </header>
+
+      <form id="quote-form">
+        <div class="grid">
+          <label>ชื่อ - สกุล
+            <input name="name" required placeholder="เช่น สมชาย ใจดี"/>
+          </label>
+          <label>เบอร์โทร
+            <input name="phone" required placeholder="0812345678"/>
+          </label>
+        </div>
+
+        <div class="grid">
+          <label>บริษัทประกัน
+            <select name="company" required>
+              <option value="INSURE">Indara Insure</option>
+              <option value="AXA">AXA</option>
+              <option value="TOKYO">Tokio Marine</option>
+            </select>
+          </label>
+          <label>ประเภทคุ้มครอง
+            <select name="coverage" required>
+              <option value="1">ประเภท 1</option>
+              <option value="2+">ประเภท 2+</option>
+              <option value="3+">ประเภท 3+</option>
+              <option value="3">ประเภท 3</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid">
+          <label>จังหวัด
+            <input name="province" required placeholder="เช่น ชลบุรี"/>
+          </label>
+          <label>รหัสรถ (carCode)
+            <input name="carCode" required placeholder="เช่น MG3-2018"/>
+          </label>
+        </div>
+
+        <label>ทุนประกัน (sum insured)
+          <input name="sumInsured" type="number" min="0" step="1000" required placeholder="เช่น 300000"/>
+        </label>
+
+        <button type="submit" class="contrast">คำนวณ & ออกใบเสนอราคา</button>
+      </form>
+
+      <article id="result" hidden>
+        <h3>ผลการคำนวณ</h3>
+        <div id="summary"></div>
+        <footer class="actions">
+          <a class="button" id="open-pdf" target="_blank">เปิด PDF</a>
+          <a class="button secondary" id="open-doc" target="_blank">เปิดเอกสาร (Docs)</a>
+        </footer>
+      </article>
+    </section>
+
+    <footer class="footnote">
+      <small>เวลา: <span id="now"></span> • LIFF: <code id="liff-id"><?!= LIFF_ID ?></code></small>
+    </footer>
+  </main>
+
+  <script><?!= include('app'); ?></script>
+</body>
+</html>
